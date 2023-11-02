@@ -1,6 +1,7 @@
 # Why a(nother) Kafka rebalancer
 
-I wrote this Kafka rebalancer because I was unhappy with the one provided by Kafka itself.
+I wrote this Kafka rebalancer because I was unhappy with the official one which comes with Kafka.
+
 The official rebalancer creates a random layout resulting in unnecessary data reallocation over the Kafka cluster.
 
 This rebalancer instead tries to minimize the amount of partitions moved.
