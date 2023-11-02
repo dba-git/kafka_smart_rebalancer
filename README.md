@@ -14,6 +14,13 @@ I had the necessity of running this task on Linux nodes and on K8s deployement (
 I therefore deployed this rebalancer using bash commands available on both environments.
 
 
+# When to run
+
+The utility comes at handy under 2 different scenarios:
+
+- When a new broker is added and partitions need to be reassigned.     Use mode=manual
+- When a broker is not available and partitions need to be reassigned. Use mode=auto
+
 # How to run
 
 Instructions can be found here:
