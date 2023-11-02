@@ -1,9 +1,12 @@
 # Why a(nother) Kafka rebalancer
 
-I wrote this Kafka rebalancer because I was unhappy with the one provided by Kafka itself.
+I wrote this Kafka rebalancer because I was unhappy with the official one provided by Kafka itself.
+
 The official rebalancer creates a random layout resulting in unnecessary data reallocation over the Kafka cluster.
 
 This rebalancer instead tries to minimize the amount of partitions moved.
+
+It is important if not foundamental especially on big clusters to approach the partitions reassignment using a "Least Effort" approach.
 
 
 # Why in bash
