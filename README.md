@@ -143,6 +143,7 @@ Total data moved around the cluster = 1.0 TB
 
 
 
+
 For the nerds out there...
 
 Moved partitions in the old way: 
@@ -158,9 +159,13 @@ Moved partitions using Kafka Smart Rebalancer (one broker increment):
 
 
 RF = Replication Factor
+
 P  = Partitions
+
 B  = Brokers 
+
 BA = Number of brokers added to the cluster
+
 
 
 
