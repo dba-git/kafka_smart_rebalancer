@@ -77,6 +77,8 @@ The topic has 20 partitions of ~100GB each
 	Topic: canary	Partition: 19	 Replicas: 0,3,1	
 
 
+
+
 When one broker is added, this was the layout proposed by the official kafka tool 'kafka-reassign-partitions'
 
                                             former        new     # partitions moved
@@ -103,7 +105,11 @@ When one broker is added, this was the layout proposed by the official kafka too
 
     
 Total partitions moved = 33 
+
 Total data moved around the cluster = 3.3 TB
+
+
+
 
 
 With Kafka Smart Rebalancer:
@@ -131,10 +137,13 @@ With Kafka Smart Rebalancer:
     Topic: canary	Partition: 19	 Replicas: 0,3,1  ->  0,3,1	  0
      
 Total partitions moved = 10
+
 Total data moved around the cluster = 1.0 TB
 
 
-For the nerds...
+
+
+For the nerds out there...
 
 Moved partitions in the old way: 
 
