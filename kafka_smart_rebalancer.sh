@@ -415,7 +415,8 @@ generate_remove_proposal() {
     		    tmp_bench=("${candidate_brokers_on_bench_array[@]}")
     		    candidate_brokers_on_bench_array=()
     		    candidate_brokers_on_bench_array=("${tmp_bench[@]}")
-		
+                echo >> $logfile
+                echo >> $logfile
 				echo  "Processing bench list.......... " >> $logfile
 	    	    for candidate in ${candidate_brokers_on_bench_array[@]}
     		    do
