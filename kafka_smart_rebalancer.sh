@@ -95,6 +95,7 @@ start_manual(){
 start_auto(){
 	$KAFKA_TOPICS --describe --bootstrap-server $bootstrap --under-replicated-partitions | grep -v "TopicId:" > $tmp_dir/topics_partitions_to_process
 	find_under_replicated_partitions
+    action="remove"
 	find_offline_brokers
 	generate_remove_proposal
 }
@@ -341,7 +342,7 @@ find_most_used_broker_on_a_topic(){
 most_used_broker=0
 partitions_amount=0
 
-echo "Current partitions assignement for topic $topic"
+echo "Current partitions reassignement for topic $topic"
 for broker in `cat $tmp_dir/brokers_list`
 do  
 #	echo "Inspecting partitions assigned to broker $broker"
@@ -502,16 +503,19 @@ replace_broker_with_candidate(){
 	broker_edit="$4"
 	candidate_edit="$5"
 
-	echo "I am going to replace ${broker_edit} with ${candidate_edit} on ${replicas_edit}" | >>  $logfile
+    echo -n "I am trying to replace ${broker_edit} with ${candidate_edit} on replicas list ${replicas_edit}... "| tee -a  $logfile
+    replicas_replaced=`echo "[${replicas_edit}]" | sed  "s/\[${broker_edit},/\[${candidate_edit},/g" | sed  "s/,${broker_edit},/,${candidate_edit},/g" | sed  "s/,${broker_edit}\]/,${candidate_edit}\]/g"`
 
-	replicas_replaced=`echo "[${replicas_edit}]" | sed  "s/\[${broker_edit},/\[${candidate_edit},/g" | sed  "s/,${broker_edit},/,${candidate_edit},/g" | sed  "s/,${broker_edit}\]/,${candidate_edit}\]/g"`
-	echo "Replacing replicas list [${replicas_edit}] with ${replicas_replaced}" | tee -a  $logfile
+    if [ "${replicas_replaced}" == "[${replicas_edit}]" ]
+    then
+        echo "No match, Skip!"
+    else
+        echo "Replacing replicas list [${replicas_edit}] with ${replicas_replaced}" | tee -a  $logfile
+        to_replace="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":\[${replicas_edit}\]"
+        replace_with="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":${replicas_replaced}"
 
-
-	to_replace="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":\[${replicas_edit}\]"
-	replace_with="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":${replicas_replaced}"
-
-	sed -i "s/$to_replace/$replace_with/g" $tmp_dir/new_layout.json
+        sed -i "s/$to_replace/$replace_with/g" $tmp_dir/new_layout.json
+    fi
 }
 
 
