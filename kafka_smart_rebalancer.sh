@@ -49,7 +49,35 @@ echo "OK! Executables are statically assigned"
 }
 
 
+
+check_params() {
+
+if [ "x$zookeeper" == "x"  ]
+then
+    echo "Zookeeper servers not passed!"
+	echo
+    print_help
+fi
+
+if [ "x$bootstrap" == "x"  ]
+then
+    echo "Bootstrap server(s) not passed!"
+	echo
+    print_help
+fi
+
+if [ "x$mode" == "x"  ]
+then
+	echo "Mode not passed!"
+	echo
+    print_help
+fi
+
+
+}
+
 check_connection() {
+
 echo -n "Testing Zookeeper connection....................... " 
 $ZOOKEEPER_CLIENT $zookeeper ls /brokers 2> /dev/null > $tmp_dir/zookeeper_smoketest
 check_zoo=`grep "topics" $tmp_dir/zookeeper_smoketest | wc -l`
@@ -61,11 +89,6 @@ then
 else
 	echo -e "${RED}Cannot connect to zookeeper using to $zookeeper. Bailing out!${NC}"
 	exit 1 
-fi
-
-if [ "x$bootstrap" == "x"  ]
-then
-	print_help
 fi
 
 echo -n "Testing Kafka connection........................... "
@@ -537,6 +560,10 @@ echo
 echo -n "Setting up working dir............................. "
 mkdir -p $tmp_dir || { echo -e "${RED}NOK! Problems creating $tmp_dir ${NC}" ; exit 1;}
 echo "OK! working dir: $tmp_dir and logfile: $logfile"
+
+
+check_params
+
 
 mode="not_set"
 debug=">"
