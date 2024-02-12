@@ -54,21 +54,21 @@ check_params() {
 
 if [ "x$zookeeper" == "x"  ]
 then
-    echo "Zookeeper servers not passed!"
+    echo -e "${RED}Zookeeper servers not passed!${NC}"
 	echo
     print_help
 fi
 
 if [ "x$bootstrap" == "x"  ]
 then
-    echo "Bootstrap server(s) not passed!"
+    echo -e "${RED}Bootstrap server(s) not passed!${NC}"
 	echo
     print_help
 fi
 
 if [ "x$mode" == "x"  ]
 then
-	echo "Mode not passed!"
+	echo -e "${RED}Mode not passed!${NC}"
 	echo
     print_help
 fi
@@ -553,6 +553,8 @@ reassign_partitions() {
 }
 
 
+check_params
+
 echo  
 echo "*********** Welcome to the automagic Least Effort Kafka rebalancer ************"
 echo
@@ -562,7 +564,7 @@ mkdir -p $tmp_dir || { echo -e "${RED}NOK! Problems creating $tmp_dir ${NC}" ; e
 echo "OK! working dir: $tmp_dir and logfile: $logfile"
 
 
-check_params
+
 
 
 mode="not_set"
