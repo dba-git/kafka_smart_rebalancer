@@ -14,7 +14,6 @@
 
 # TODO
 
-# * Print some info only in debug mode - replace | tee -a with $debug for the uninteresting lines
 # * smarter executable assignment, to allow this to run on normal installations (not only K8s)
 # * time how long it takes to add a broker VS kafka-reassign-partitions
 
@@ -32,9 +31,9 @@ echo
 echo "Use mode=auto to rebalance in case one or more brokers failed. Under Replicated Partitions will be rebalanced over the survived brokers"
 echo
 echo "Use mode=manual to add or remove a broker"
-echo "Usage: $0  --mode=auto   --zookeeper=zoo:2181 --bootstrap-server=kafka:9092 [--debug]"
+echo "Usage: $0  --mode=auto   --zookeeper=zoo:2181 --bootstrap-server=kafka:9092"
 echo "NOTE: the list of brokers must be at least equal to the replication factor of your topics"
-echo "Usage: $0  --mode=manual --zookeeper=zoo:2181 --bootstrap-server=kafka:9092 --brokers=0,1,2 [--debug]"
+echo "Usage: $0  --mode=manual --zookeeper=zoo:2181 --bootstrap-server=kafka:9092 --brokers=0,1,2"
 echo
 exit 1
 }
@@ -127,15 +126,15 @@ start_auto(){
 try_candidate(){
     candidate=$1
     replicas=$2
-    echo -n "Trying broker $candidate on replicas $replicas.... " >> $logfile
+    echo -n "Trying broker $candidate on replicas $replicas.... "  >> $logfile
     echo "$replicas" | grep -q "^${candidate}\|,${candidate}\|${candidate}$"
     if [ $? -eq 0 ]
     then
         # Collision detected
-        echo  "NOK! Broker $candidate is already present on Replicas list, skipping.." >> $logfile
+        echo  "NOK! Broker $candidate is already present on Replicas list, skipping.."  >> $logfile
         return 1
     else
-        echo "OK! Broker $candidate can replace $broker_to_add_or_remove" >> $logfile
+        echo "OK! Broker $candidate can replace $broker_to_add_or_remove"  >> $logfile
         return 0
     fi
 }
@@ -282,18 +281,18 @@ generate_add_proposal() {
    	for broker_to_add_or_remove in `cat $tmp_dir/target_brokers`
 	do
 
-        echo " ###################################### "
-        echo "  I m going to ${action} broker $broker_to_add_or_remove"
-        echo " ###################################### "
+        echo " ###################################### "  >> $logfile
+        echo "  I m going to ${action} broker $broker_to_add_or_remove"   | tee -a $logfile
+        echo " ###################################### "  >> $logfile
         echo
 
 		more $tmp_dir/topics_partitions_to_process | awk '{print $2}' | sort | uniq > $tmp_dir/all_topics_list
   	    for topic in `cat $tmp_dir/all_topics_list`
         do  
 			echo 
-			echo "**********************"
-			echo "Processing topic $topic"	
-			echo "**********************"
+			echo "**********************"      >> $logfile
+			echo "Processing topic $topic"	   | tee -a $logfile
+			echo "**********************"      >> $logfile
 
             # Create a list of the current topic-partitions
             cat $tmp_dir/topics_partitions_to_process | grep -P "$topic\t" > $tmp_dir/target_topic_partitions
@@ -326,15 +325,14 @@ generate_add_proposal() {
 				# Parse all the partitions in the current topic to find the broker with more partitions assigned. This is the broker we are going to replace
 				find_most_used_broker_on_a_topic
 	            candidate=$(more $tmp_dir/most_used_broker)
-				echo "Candidate is $candidate"
+				echo "Candidate is $candidate"  >> $logfile
 				rm -f $tmp_dir/most_used_broker
 
 				while read -r topic_partition 
 				do
 	                replicas=`echo $topic_partition | awk '{print $8}'`
 	                partition=`echo $topic_partition | awk '{print $4}'`
-					echo "Parsing topic $topic - partition $partition "	
-
+					echo "Parsing topic $topic - partition $partition "	 >> $logfile
                 	# Is the candidate broker present in the line we are processing? yes: proceed else skip
                 	echo  "$replicas" | grep -q  "^${candidate}\|,${candidate}\|${candidate}$"
                 	if [ $? -eq 0 ]
@@ -352,7 +350,7 @@ generate_add_proposal() {
 						echo "-> Partitions left to reassign: $partitions_to_reassign"
 						break
 					else
-						echo "No match for candidate $candidate on $replicas"
+						echo "No match for candidate $candidate on $replicas" >> $logfile
 					fi
 				done < $tmp_dir/target_topic_partitions
 			done
@@ -407,28 +405,28 @@ generate_remove_proposal() {
 	for broker_to_add_or_remove in `cat $tmp_dir/target_brokers`
 	do
 
-		echo " ###################################### "
-		echo "  I m going to ${action} broker $broker_to_add_or_remove"
-		echo " ###################################### "
+		echo " ###################################### "  >> $logfile
+		echo "  I m going to ${action} broker $broker_to_add_or_remove" >> $logfile
+		echo " ###################################### " >> $logfile
 		echo
 	
+        echo -n "Removing broker $broker_to_add_or_remove.................................. "
 		# This array is used to keep track of the current candidates list. Brokers get removed from the list when they get a new partition assigned
 		candidate_brokers_list_array=("${list_of_surviving_brokers_array[@]}")
 
 		# This is the reserve array. Gets populated only when the only remaining brokers in candidate_brokers_list_array cannot be assigned due to collision. We then park those brokers on a side,to be used with priority at the next iterations
 		candidate_brokers_on_bench_array=()
 
-		echo
+
 		while read -r line
 		do
-		    topic=`echo $line | awk '{print $2}'`
-			partition=`echo $line | awk '{print $4}'`
-			replicas=`echo $line | awk '{print $8}'`
-			echo
-			echo "Processing topic $topic on partition $partition replicas $replicas " | tee -a $logfile
+		    topic=`echo $line | awk '{print $2}'`       >> $logfile
+			partition=`echo $line | awk '{print $4}'`   >> $logfile
+			replicas=`echo $line | awk '{print $8}'`    >> $logfile
+			echo "Processing topic $topic on partition $partition replicas $replicas " >> $logfile
 	
     		# Is the offline broker present in the line we are processing? yes: proceed else skip
-    		echo  "$replicas" | grep -q  "^${broker_to_add_or_remove}\|,${broker_to_add_or_remove}\|${broker_to_add_or_remove}$"
+    		echo  "$replicas" | grep -q  "^${broker_to_add_or_remove}\|,${broker_to_add_or_remove}\|${broker_to_add_or_remove}$"  > /dev/null
     		if [ $? -eq 0 ]
   		  	then
     		    assigned=0
@@ -438,9 +436,9 @@ generate_remove_proposal() {
     		    tmp_bench=("${candidate_brokers_on_bench_array[@]}")
     		    candidate_brokers_on_bench_array=()
     		    candidate_brokers_on_bench_array=("${tmp_bench[@]}")
-                echo >> $logfile
-                echo >> $logfile
-				echo  "Processing bench list.......... " >> $logfile
+                echo  >> $logfile
+                echo  >> $logfile
+				echo  "Processing bench list.......... "  >> $logfile
 	    	    for candidate in ${candidate_brokers_on_bench_array[@]}
     		    do
         		    try_candidate $candidate $replicas
@@ -455,7 +453,7 @@ generate_remove_proposal() {
         		done
 				if [ $assigned -eq 0 ]
 				then
-	    	    	echo " Bench processed - no broker assigned from the bench" >> $logfile
+	    	    	echo " Bench processed - no broker assigned from the bench"  >> $logfile
 				fi
 		
 		        # If the broker was not assigned from one in the bench, then use brokers list
@@ -464,10 +462,10 @@ generate_remove_proposal() {
 		            if [ ${#candidate_brokers_list_array[@]} -eq 0 ]
 		            then
 		                # Refill the list
-		                echo "List of candidate brokers is empty, refilling.." >> $logfile
+		                echo "List of candidate brokers is empty, refilling.."  >> $logfile
 	    	            candidate_brokers_list_array=("${list_of_surviving_brokers_array[@]}")
 					else
-		        	    echo "List of candidate brokers is [${candidate_brokers_list_array[@]}]" >> $logfile
+		        	    echo "List of candidate brokers is [${candidate_brokers_list_array[@]}]"  >> $logfile
 	            	fi
 		            # Position in the candidates array
 		            cand_pos=0
@@ -478,14 +476,14 @@ generate_remove_proposal() {
 	        	    candidate_brokers_on_bench_array_lenght=${#candidate_brokers_list_array[@]}
 	        	    for candidate in  ${candidate_brokers_list_array[@]}
 	        	    do
-	        	        echo "Candidates array lenght: $candidate_brokers_on_bench_array_lenght, candidate broker: $candidate (array position: $cand_pos)" >> $logfile
+	        	        echo "Candidates array lenght: $candidate_brokers_on_bench_array_lenght, candidate broker: $candidate (array position: $cand_pos)"  >> $logfile
 	        	        try_candidate $candidate $replicas
 	        	        if [ $? -eq 0 ]
 	            	    then
 	            	        # echo "candidate fits, removing from list"
 	            	        # remove candidate from candidate list
 	            	        unset candidate_brokers_list_array[$cand_pos]
-							echo "Remaining items in candidate_brokers_list_array ${candidate_brokers_list_array[@]}" >> $logfile
+							echo "Remaining items in candidate_brokers_list_array ${candidate_brokers_list_array[@]}"  >> $logfile
 	                    	assigned=1
 	                    	break
 	                	else
@@ -493,7 +491,7 @@ generate_remove_proposal() {
 	             	   fi
 	            	if [ $candidate_brokers_on_bench_array_lenght -eq $cand_pos ]
 	            	then
-		                echo "No more possible brokers to try... moving existing brokers to the bench and refilling" >> $logfile
+		                echo "No more possible brokers to try... moving existing brokers to the bench and refilling"  >> $logfile
 		                # We reached the end of the array, without possible candidates. move the brokers to the bench and refill
 		                candidate_brokers_on_bench_array=("${candidate_brokers_list_array[@]}")
 		                candidate_brokers_list_array=("${list_of_surviving_brokers_array[@]}")
@@ -504,14 +502,14 @@ generate_remove_proposal() {
 		            # if brokers list is empty, assign it with the full list
 		        done
 	   	
-	    	else
-	    	    echo "Line $line not matched " | tee -a  $logfile
+	    	#else
+	    	#    echo "Line $line not matched " >> $logfile
 	    	fi
 	
 		replace_broker_with_candidate "$topic" "$partition" "$replicas" "$broker_to_add_or_remove" "$candidate"
 	
 		done < $tmp_dir/topics_partitions_to_process
-
+    echo "Done!"
 	done
 
 	echo
@@ -526,15 +524,15 @@ replace_broker_with_candidate(){
 	replicas_edit="$3"
 	broker_edit="$4"
 	candidate_edit="$5"
-
-    echo -n "I am trying to replace ${broker_edit} with ${candidate_edit} on replicas list ${replicas_edit}... "| tee -a  $logfile
+    echo >> $logfile
+    echo -n "Trying to replace ${broker_edit} with ${candidate_edit} on replicas list ${replicas_edit}... " >> $logfile
     replicas_replaced=`echo "[${replicas_edit}]" | sed  "s/\[${broker_edit},/\[${candidate_edit},/g" | sed  "s/,${broker_edit},/,${candidate_edit},/g" | sed  "s/,${broker_edit}\]/,${candidate_edit}\]/g"`
 
     if [ "${replicas_replaced}" == "[${replicas_edit}]" ]
     then
-        echo "No match, Skip!"
+        echo "No match, Skip!" >> $logfile
     else
-        echo "Replacing replicas list [${replicas_edit}] with ${replicas_replaced}" | tee -a  $logfile
+        echo "Replacing replicas list [${replicas_edit}] with ${replicas_replaced}" >> $logfile
         to_replace="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":\[${replicas_edit}\]"
         replace_with="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":${replicas_replaced}"
 
@@ -554,6 +552,9 @@ reassign_partitions() {
 
 
 
+
+
+
 echo  
 echo "*********** Welcome to the automagic Least Effort Kafka rebalancer ************"
 echo
@@ -563,11 +564,7 @@ mkdir -p $tmp_dir || { echo -e "${RED}NOK! Problems creating $tmp_dir ${NC}" ; e
 echo "OK! working dir: $tmp_dir and logfile: $logfile"
 
 
-
-
-
 mode="not_set"
-debug=">"
 for var in "$@";do
     case "$var" in
         --zookeeper=*)
@@ -583,15 +580,11 @@ for var in "$@";do
             brokers="${var#*=}"
             echo "${brokers[*]}" | sed 's/,/ /g' >  $tmp_dir/brokers_list
             ;;
-		--debug)
-			debug="| tee -a"
-			;;
         *)
             print_help
             exit 1
     esac
 done
-
 
 check_params
 
@@ -606,6 +599,12 @@ fi
 
 set_commands
 check_connection
+
+echo
+echo  "Output going to logfile `pwd`/$logfile"
+echo
+
+
 
 
 case $mode in 
