@@ -150,7 +150,7 @@ find_under_replicated_partitions(){
 
 
 find_target_brokers(){
-	echo -n "Identifying target brokers to add/remove........... "
+	echo -n "Identifying target brokers to add/remove........... " 
 	# This creates a column with all the brokers assigned over all the current partitions
     more $tmp_dir/topics_partitions_to_process | awk '{print $8}' | sed 's/\(,\)/\n/g' | sort | uniq > $tmp_dir/brokers_in_describe_output
 
@@ -255,7 +255,6 @@ generate_list_of_topics_to_rebalance(){
 }
 
 generate_add_proposal() {
-
 	# Add a new broker to the cluster avoiding collisions 
     # Eg: Suppose we have Replicas  4,0,7 and offline broker is 7, we need then to replace 7 with a broker different from 4 and 0
 
@@ -276,7 +275,7 @@ generate_add_proposal() {
 	# Remove partition from the list + decrease the counter of assigned partitions to new broker + decrease the counter of old broker
 
 	# Count the topics with less partitions than total brokers. Assign to yourself one of them every (number_of_brokers) iterations
-	skipped=0		
+	skipped=0
 
    	for broker_to_add_or_remove in `cat $tmp_dir/target_brokers`
 	do
@@ -284,70 +283,64 @@ generate_add_proposal() {
         echo " ###################################### "  >> $logfile
         echo "  I m going to ${action} broker $broker_to_add_or_remove"   | tee -a $logfile
         echo " ###################################### "  >> $logfile
-        echo
-
-		more $tmp_dir/topics_partitions_to_process | awk '{print $2}' | sort | uniq > $tmp_dir/all_topics_list
+		more $tmp_dir/topics_partitions_to_process | awk '{print $2}' | sort | uniq > $tmp_dir/all_topics_list  
   	    for topic in `cat $tmp_dir/all_topics_list`
         do  
-			echo 
 			echo "**********************"      >> $logfile
-			echo "Processing topic $topic"	   | tee -a $logfile
+			echo "Processing topic $topic"	   >> $logfile
 			echo "**********************"      >> $logfile
-
             # Create a list of the current topic-partitions
+
             cat $tmp_dir/topics_partitions_to_process | grep -P "$topic\t" > $tmp_dir/target_topic_partitions
 
 			# Count the total number of partitions in the topic to account for how many should be reassigned
-			total_partitions_in_topic=`more $tmp_dir/target_topic_partitions | grep -P "$topic\t" | awk '{print $8}' | sed 's/,/ /g' | wc -w`
+			total_partitions_in_topic=`more $tmp_dir/target_topic_partitions | grep -P "$topic\t" | awk '{print $8}' | sed 's/,/ /g' | wc -w` >> $logfile
 			
 			# Number of partitions to reassign = total_partitions / (brokers assigned to topic )
-			brokers_assigned_to_topic=`more $tmp_dir/target_topic_partitions | grep -P "$topic\t" | awk '{print $8}' | sed 's/\(,\)/\n/g' | sort | uniq |wc -l`
-			partitions_to_reassign=`echo $(($total_partitions_in_topic / ($brokers_assigned_to_topic + 1 )))`
+			brokers_assigned_to_topic=`more $tmp_dir/target_topic_partitions | grep -P "$topic\t" | awk '{print $8}' | sed 's/\(,\)/\n/g' | sort | uniq |wc -l` >> $logfile
+			partitions_to_reassign=`echo $(($total_partitions_in_topic / ($brokers_assigned_to_topic + 1 )))` >> $logfile
 			
-			echo "I found $total_partitions_in_topic partitions and a total of $brokers_assigned_to_topic brokers assigned. I will assign $partitions_to_reassign partitions to the new broker"
+			echo "I found $total_partitions_in_topic partitions and a total of $brokers_assigned_to_topic brokers assigned. I will assign $partitions_to_reassign partitions to the new broker" >> $logfile
 			
 			if [ $partitions_to_reassign -eq 0 ]
 			then
 				# Increase the counter
-				skipped=`echo $(($skipped + $total_partitions_in_topic))`
-				total_num_of_brokers=`more $tmp_dir/brokers_column | wc -l`
-	            partitions_to_reassign=`echo $(($skipped / $total_num_of_brokers ))`
+				skipped=`echo $(($skipped + $total_partitions_in_topic))` >> $logfile
+				total_num_of_brokers=`more $tmp_dir/brokers_column | wc -l` >> $logfile
+	            partitions_to_reassign=`echo $(($skipped / $total_num_of_brokers ))` >> $logfile
 				if [ $partitions_to_reassign -eq 1 ]
 				then
-					echo "** Round robin assignment of topics with total replicas < total brokers **"
-					skipped=`echo $(($skipped%$total_num_of_brokers))`
+					echo "** Round robin assignment of topics with total replicas < total brokers **" >> $logfile
+					skipped=`echo $(($skipped%$total_num_of_brokers))` >> $logfile
 				fi
 			fi
-			
 
 			while [ $partitions_to_reassign -gt 0 ]
 			do
 				# Parse all the partitions in the current topic to find the broker with more partitions assigned. This is the broker we are going to replace
 				find_most_used_broker_on_a_topic
-	            candidate=$(more $tmp_dir/most_used_broker)
+	            candidate=$(more $tmp_dir/most_used_broker) >> $logfile
 				echo "Candidate is $candidate"  >> $logfile
-				rm -f $tmp_dir/most_used_broker
+				rm -f $tmp_dir/most_used_broker >> $logfile
 
 				while read -r topic_partition 
 				do
-	                replicas=`echo $topic_partition | awk '{print $8}'`
-	                partition=`echo $topic_partition | awk '{print $4}'`
+	                replicas=`echo $topic_partition | awk '{print $8}'`  >> $logfile
+	                partition=`echo $topic_partition | awk '{print $4}'` >> $logfile
 					echo "Parsing topic $topic - partition $partition "	 >> $logfile
                 	# Is the candidate broker present in the line we are processing? yes: proceed else skip
-                	echo  "$replicas" | grep -q  "^${candidate}\|,${candidate}\|${candidate}$"
+                	echo  "$replicas" | grep -q  "^${candidate}\|,${candidate}\|${candidate}$"  >> $logfile
                 	if [ $? -eq 0 ]
 					then
-						echo "*** Match! Candidate $candidate can be replaced on $replicas"
+						echo "*** Match! Candidate $candidate can be replaced on $replicas" >> $logfile
 						# replace with candidate
 		                replace_broker_with_candidate "$topic" "$partition" "$replicas"  "$candidate" "$broker_to_add_or_remove"
-
         	    	  	# Delete the line (topic - partition) from the list
-						echo "Removing partition $partition from file $tmp_dir/target_topic_partitions"
-						sed  -i "/Topic: $topic\tPartition: $partition\t.*/d" $tmp_dir/target_topic_partitions
+						echo "Removing partition $partition from file $tmp_dir/target_topic_partitions"         >> $logfile
+						sed  -i "/Topic: $topic\tPartition: $partition\t.*/d" $tmp_dir/target_topic_partitions  >> $logfile
 	
 						((partitions_to_reassign--))
-						echo
-						echo "-> Partitions left to reassign: $partitions_to_reassign"
+						echo "-> Partitions left to reassign: $partitions_to_reassign" >> $logfile
 						break
 					else
 						echo "No match for candidate $candidate on $replicas" >> $logfile
@@ -363,12 +356,12 @@ find_most_used_broker_on_a_topic(){
 most_used_broker=0
 partitions_amount=0
 
-echo "Current partitions reassignement for topic $topic"
+echo "Current partitions reassignement for topic $topic" >> $logfile
 for broker in `cat $tmp_dir/brokers_list`
 do  
-#	echo "Inspecting partitions assigned to broker $broker"
+#	echo "Inspecting partitions assigned to broker $broker" >> $logfile
 	assigned_partitions[$broker]=`more $tmp_dir/target_topic_partitions | grep -P "$topic\t" | awk '{print $8}' | grep  "^${broker}\|,${broker}\|${broker}$" | wc -l`
-    echo  "Broker $broker: ${assigned_partitions[$broker]}"
+    echo  "Broker $broker: ${assigned_partitions[$broker]}" >> $logfile
 done
 
 # Randomize the order in order to avoid the first broker consistently being deprived of more partitions than the others
@@ -404,7 +397,6 @@ generate_remove_proposal() {
 
 	for broker_to_add_or_remove in `cat $tmp_dir/target_brokers`
 	do
-
 		echo " ###################################### "  >> $logfile
 		echo "  I m going to ${action} broker $broker_to_add_or_remove" >> $logfile
 		echo " ###################################### " >> $logfile
@@ -424,9 +416,8 @@ generate_remove_proposal() {
 			partition=`echo $line | awk '{print $4}'`   >> $logfile
 			replicas=`echo $line | awk '{print $8}'`    >> $logfile
 			echo "Processing topic $topic on partition $partition replicas $replicas " >> $logfile
-	
     		# Is the offline broker present in the line we are processing? yes: proceed else skip
-    		echo  "$replicas" | grep -q  "^${broker_to_add_or_remove}\|,${broker_to_add_or_remove}\|${broker_to_add_or_remove}$"  > /dev/null
+    		echo  "$replicas" | grep -q  "^${broker_to_add_or_remove}\|,${broker_to_add_or_remove}\|${broker_to_add_or_remove}$" >> $logfile
     		if [ $? -eq 0 ]
   		  	then
     		    assigned=0
@@ -526,7 +517,7 @@ replace_broker_with_candidate(){
 	candidate_edit="$5"
     echo >> $logfile
     echo -n "Trying to replace ${broker_edit} with ${candidate_edit} on replicas list ${replicas_edit}... " >> $logfile
-    replicas_replaced=`echo "[${replicas_edit}]" | sed  "s/\[${broker_edit},/\[${candidate_edit},/g" | sed  "s/,${broker_edit},/,${candidate_edit},/g" | sed  "s/,${broker_edit}\]/,${candidate_edit}\]/g"`
+    replicas_replaced=`echo "[${replicas_edit}]" | sed  "s/\[${broker_edit},/\[${candidate_edit},/g" | sed  "s/,${broker_edit},/,${candidate_edit},/g" | sed  "s/,${broker_edit}\]/,${candidate_edit}\]/g"` >> $logfile
 
     if [ "${replicas_replaced}" == "[${replicas_edit}]" ]
     then
@@ -536,14 +527,14 @@ replace_broker_with_candidate(){
         to_replace="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":\[${replicas_edit}\]"
         replace_with="\"topic\":\"${topic_edit}\",\"partition\":${partition_edit},\"replicas\":${replicas_replaced}"
 
-        sed -i "s/$to_replace/$replace_with/g" $tmp_dir/new_layout.json
+        sed -i "s/$to_replace/$replace_with/g" $tmp_dir/new_layout.json >> $logfile
     fi
 }
 
 
 reassign_partitions() {
 	echo -n "Reassigning Partitions based on $tmp_dir/new_layout.json... "
-	$REASSIGN_PARTITIONS --bootstrap-server $bootstrap --execute --reassignment-json-file $tmp_dir/new_layout.json > /dev/null
+	$REASSIGN_PARTITIONS --bootstrap-server $bootstrap --execute --reassignment-json-file $tmp_dir/new_layout.json >> $logfile
 	echo "OK! Rebalancing started."
 	echo 
 	echo "To check status, run:"
