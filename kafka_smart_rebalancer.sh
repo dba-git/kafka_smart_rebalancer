@@ -553,7 +553,6 @@ reassign_partitions() {
 }
 
 
-check_params
 
 echo  
 echo "*********** Welcome to the automagic Least Effort Kafka rebalancer ************"
@@ -592,6 +591,10 @@ for var in "$@";do
             exit 1
     esac
 done
+
+
+check_params
+
 
 
 if [ "$mode" == "manual" ] && [ "x$brokers" == "x" ]
